@@ -1,0 +1,68 @@
+{
+  "2025-11-03": {
+    "stadiums": [
+      {
+        "stadium_name": "前橋", 
+        "races": [
+          {
+            "race_id": "maebashi-1",
+            "race_no": 1,
+            "race_name": "S級予選",
+            "entries": [
+              {"name": "佐藤 一朗", "score": 110.2, "upset": 0.18, "leg_type": "逃げ", "line": "北日本", "line_power": 86},
+              {"name": "鈴木 健太", "score": 108.5, "upset": 0.22, "leg_type": "捲り", "line": "北日本", "line_power": 84},
+              {"name": "高橋 翔", "score": 106.9, "upset": 0.31, "leg_type": "自在", "line": "関東", "line_power": 78},
+              {"name": "田中 優", "score": 104.3, "upset": 0.27, "leg_type": "追込", "line": "関東", "line_power": 76},
+              {"name": "伊藤 大樹", "score": 101.5, "upset": 0.35, "leg_type": "自在", "line": "南関東", "line_power": 74},
+              {"name": "小林 亮", "score": 99.8, "upset": 0.29, "leg_type": "追込", "line": "南関東", "line_power": 72}
+            ]
+          },
+          {
+            "race_id": "maebashi-2",
+            "race_no": 2,
+            "race_name": "S級予選",
+            "entries": [
+              {"name": "山本 拓真", "score": 109.9, "upset": 0.21, "leg_type": "捲り", "line": "中部", "line_power": 83},
+              {"name": "中村 大悟", "score": 107.2, "upset": 0.24, "leg_type": "追込", "line": "中部", "line_power": 80},
+              {"name": "松本 直", "score": 105.1, "upset": 0.28, "leg_type": "逃げ", "line": "西日本", "line_power": 81},
+              {"name": "原田 宙", "score": 102.4, "upset": 0.32, "leg_type": "自在", "line": "西日本", "line_power": 77},
+              {"name": "岸本 誠", "score": 100.7, "upset": 0.26, "leg_type": "追込", "line": "九州", "line_power": 79},
+              {"name": "森本 翼", "score": 98.6, "upset": 0.36, "leg_type": "自在", "line": "九州", "line_power": 75}
+            ]
+          }
+        ]
+      },
+      {
+        "stadium_name": "別府",
+        "races": [
+          {
+            "race_id": "beppu-7",
+            "race_no": 7,
+            "race_name": "A級準決勝",
+            "entries": [
+              {"name": "吉田 誠", "score": 103.7, "upset": 0.30, "leg_type": "逃げ", "line": "中国", "line_power": 70},
+              {"name": "岡田 俊", "score": 101.4, "upset": 0.25, "leg_type": "追込", "line": "中国", "line_power": 69},
+              {"name": "藤井 亮太", "score": 100.9, "upset": 0.28, "leg_type": "自在", "line": "四国", "line_power": 68},
+              {"name": "大西 真", "score": 99.3, "upset": 0.34, "leg_type": "捲り", "line": "四国", "line_power": 67},
+              {"name": "武田 裕", "score": 97.8, "upset": 0.27, "leg_type": "追込", "line": "九州", "line_power": 66},
+              {"name": "西村 海斗", "score": 96.1, "upset": 0.33, "leg_type": "自在", "line": "単騎", "line_power": 55}
+            ]
+          },
+          {
+            "race_id": "beppu-8",
+            "race_no": 8,
+            "race_name": "A級準決勝",
+            "entries": [
+              {"name": "石井 陸", "score": 104.5, "upset": 0.23, "leg_type": "逃げ", "line": "南関東", "line_power": 82},
+              {"name": "上原 颯", "score": 102.7, "upset": 0.29, "leg_type": "自在", "line": "南関東", "line_power": 80},
+              {"name": "長谷川 純", "score": 101.8, "upset": 0.31, "leg_type": "追込", "line": "北日本", "line_power": 78},
+              {"name": "小野 翔太", "score": 99.6, "upset": 0.27, "leg_type": "追込", "line": "北日本", "line_power": 76},
+              {"name": "平田 航", "score": 98.9, "upset": 0.35, "leg_type": "捲り", "line": "関東", "line_power": 73},
+              {"name": "中野 瞬", "score": 97.1, "upset": 0.32, "leg_type": "自在", "line": "関東", "line_power": 71}
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
