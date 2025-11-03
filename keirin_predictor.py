@@ -42,6 +42,10 @@ PROVIDER_LABELS = {
 }
 
 
+from keirin_fetcher import DataSource, fetch_racecards
+from keirin_models import DEFAULT_LEG_TYPES, Rider
+
+
 class KeirinPredictor:
     """Heuristic model for ２車複 predictions."""
 
@@ -333,6 +337,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             "Proxy configuration for network requests when using --fetch. "
             "'system' honours environment proxy settings while 'none' sends "
             "requests directly without a proxy."
+        choices=[DataSource.AUTO, DataSource.RAKUTEN, DataSource.LOCAL],
+        default=DataSource.AUTO,
+        help=(
+            "Race-card provider when using --fetch. 'auto' tries the live "
+            "Rakuten feed then falls back to the offline dataset, 'rakuten' "
+            "forces the live API, and 'local' always uses the bundled sample."
         ),
     )
     args = parser.parse_args(argv)
@@ -359,6 +369,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         except Exception as exc:
             raise SystemExit(f"Failed to obtain race cards: {exc}") from exc
         race_cards = outcome.race_cards
+        try:
+            race_cards = fetch_racecards(target_date, source=args.data_source)
+        except Exception as exc:
+            raise SystemExit(f"Failed to obtain race cards: {exc}") from exc
         if not race_cards:
             raise SystemExit(
                 f"No race cards were found for {target_date.isoformat()}"
@@ -404,6 +418,23 @@ def main(argv: Sequence[str] | None = None) -> int:
                     print("  Line predictions:")
                     for line_name, members, probability in line_predictions:
                         print("    - " + format_line_prediction(line_name, members, probability))
+        predictor = KeirinPredictor()
+        for card in race_cards:
+            print(
+                f"\n{card.venue_name} {card.race_number}R {card.race_title}"
+                f" (race ID: {card.race_id})"
+            )
+            predictions = predictor.predict_pairs(card.riders, top=args.top)
+            if not predictions:
+                print("  No riders available")
+                continue
+            for pair, probability in predictions:
+                print("  - " + format_prediction(pair, probability))
+            line_predictions = predictor.predict_lines(card.riders, top=args.top_lines)
+            if line_predictions:
+                print("  Line predictions:")
+                for line_name, members, probability in line_predictions:
+                    print("    - " + format_line_prediction(line_name, members, probability))
     else:
         if args.input is None:
             parser.error("Either supply a CSV file or use --fetch")

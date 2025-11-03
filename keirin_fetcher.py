@@ -18,6 +18,11 @@ from collections.abc import Iterable
 from typing import Any, Iterator, List, Mapping, Sequence, Tuple
 from urllib.error import HTTPError, URLError
 from urllib.request import ProxyHandler, Request, build_opener
+from pathlib import Path
+from collections.abc import Iterable
+from typing import Any, Iterator, List, Mapping, Sequence
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
 from keirin_models import DEFAULT_LEG_TYPES, Rider
 
@@ -41,6 +46,10 @@ class ProxyMode:
 
 
 RAKUTEN_API_URLS = (
+    LOCAL = "local"
+
+
+API_URLS = (
     "https://keirin.rakuten.co.jp/keirinapi/sp/racecard/list",
     "https://keirin.rakuten.co.jp/keirinapi/racecard/list",
     "https://keirin.rakuten.co.jp/keirinapi/sp/racecard",
@@ -62,6 +71,7 @@ KEIRIN_JP_API_URLS = (
 DATA_PACKAGE = "data"
 LOCAL_DATA_FILENAME = "local_racecards.json"
 LOCAL_DATA_FALLBACK = Path(__file__).resolve().parent / "data" / LOCAL_DATA_FILENAME
+LOCAL_DATA_FILE = Path(__file__).resolve().parent / "data" / "local_racecards.json"
 """Bundled offline dataset used when live fetching fails."""
 
 
@@ -93,6 +103,7 @@ def fetch_racecards(
     source: str = DataSource.AUTO,
     proxy_mode: str = ProxyMode.SYSTEM,
 ) -> FetchOutcome:
+) -> List[RaceCard]:
     """Download and parse keirin race cards for ``target_date``.
 
     Parameters
@@ -182,6 +193,23 @@ def fetch_racecards(
             proxy_mode=ProxyMode.NONE,
             errors=tuple(errors),
         )
+    """
+
+    if source not in {DataSource.AUTO, DataSource.RAKUTEN, DataSource.LOCAL}:
+        raise ValueError(f"Unknown data source: {source}")
+
+    if source in {DataSource.AUTO, DataSource.RAKUTEN}:
+        try:
+            payload = _download_payload(target_date, timeout=timeout)
+            return list(_parse_racecards(payload))
+        except Exception as exc:  # pragma: no cover - network dependent
+            if source == DataSource.RAKUTEN:
+                raise
+            LOGGER.warning("Live fetch failed (%s); attempting offline dataset", exc)
+
+    if source in {DataSource.AUTO, DataSource.LOCAL}:
+        payload = _load_local_payload(target_date)
+        return list(_parse_racecards(payload))
 
     raise RuntimeError("No race cards available for the requested source")
 
@@ -250,6 +278,7 @@ def _download_live_payload(
 
 
 def _download_rakuten_payload(target_date: date, *, timeout: float, proxy_mode: str) -> Any:
+def _download_payload(target_date: date, *, timeout: float) -> Any:
     """Try each supported Rakuten K-Dreams endpoint until one succeeds."""
 
     ymd = target_date.strftime("%Y%m%d")
@@ -277,11 +306,13 @@ def _download_rakuten_payload(target_date: date, *, timeout: float, proxy_mode: 
     )
 
     for base_url in RAKUTEN_API_URLS:
+    for base_url in API_URLS:
         for key, value in params:
             url = f"{base_url}?{key}={value}"
             request = Request(url, headers=headers)
             try:
                 with opener.open(request, timeout=timeout) as response:
+                with urlopen(request, timeout=timeout) as response:
                     if response.status != 200:
                         errors.append(f"HTTP {response.status} for {url}")
                         continue
@@ -396,6 +427,13 @@ def _load_local_payload(target_date: date) -> Any:
             dataset = json.load(handle)
     else:
         raise RuntimeError("Local race-card dataset is missing")
+
+def _load_local_payload(target_date: date) -> Any:
+    if not LOCAL_DATA_FILE.exists():
+        raise RuntimeError("Local race-card dataset is missing")
+
+    with LOCAL_DATA_FILE.open("r", encoding="utf-8") as handle:
+        dataset = json.load(handle)
 
     key = target_date.isoformat()
     if key in dataset:
@@ -716,4 +754,5 @@ __all__ = [
     "DataSource",
     "ProxyMode",
 ]
+__all__ = ["RaceCard", "fetch_racecards", "DataSource"]
 
