@@ -1,0 +1,6 @@
+# Ignore build artifacts
+/dist/
+*.exe
+*.pyz
+*.pyc
+__pycache__/

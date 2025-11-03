@@ -26,9 +26,21 @@ import argparse
 import datetime as _dt
 import csv
 import itertools
+import sys
 from math import exp
 from pathlib import Path
 from typing import Dict, Iterable, List, Sequence, Tuple
+
+from keirin_fetcher import DataSource, ProxyMode, RaceCard, fetch_racecards
+from keirin_models import DEFAULT_LEG_TYPES, Rider
+
+
+PROVIDER_LABELS = {
+    DataSource.RAKUTEN: "Rakuten K-Dreams",
+    DataSource.KEIRIN_JP: "keirin.jp",
+    DataSource.LOCAL: "bundled offline dataset",
+}
+
 
 from keirin_fetcher import DataSource, fetch_racecards
 from keirin_models import DEFAULT_LEG_TYPES, Rider
@@ -261,6 +273,8 @@ def _parse_date(date_text: str) -> _dt.date:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    provided_args = list(argv) if argv is not None else sys.argv[1:]
+
     parser = argparse.ArgumentParser(
         description=(
             "Two-rider Keirin quinella predictor. Provide a CSV file or use --fetch "
@@ -300,6 +314,29 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     parser.add_argument(
         "--data-source",
+        choices=[
+            DataSource.AUTO,
+            DataSource.KEIRIN_JP,
+            DataSource.RAKUTEN,
+            DataSource.LOCAL,
+        ],
+        default=DataSource.AUTO,
+        help=(
+            "Race-card provider when using --fetch. 'auto' tries keirin.jp "
+            "and Rakuten before falling back to the offline dataset, "
+            "'keirin_jp' forces the official keirin.jp feed, 'rakuten' forces "
+            "the Rakuten K-Dreams feed, and 'local' always uses the bundled "
+            "sample."
+        ),
+    )
+    parser.add_argument(
+        "--proxy-mode",
+        choices=[ProxyMode.SYSTEM, ProxyMode.NONE],
+        default=ProxyMode.SYSTEM,
+        help=(
+            "Proxy configuration for network requests when using --fetch. "
+            "'system' honours environment proxy settings while 'none' sends "
+            "requests directly without a proxy."
         choices=[DataSource.AUTO, DataSource.RAKUTEN, DataSource.LOCAL],
         default=DataSource.AUTO,
         help=(
@@ -310,10 +347,28 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
+    auto_fetch = False
+    if not provided_args and not args.fetch and args.input is None:
+        auto_fetch = True
+        args.fetch = True
+        if args.date is None:
+            args.date = _dt.date.today()
+
     if args.fetch:
         if args.input is not None:
             parser.error("CSV input should not be provided together with --fetch")
         target_date = args.date or _dt.date.today()
+        if auto_fetch:
+            print("No arguments supplied; downloading today's race cards...")
+        try:
+            outcome = fetch_racecards(
+                target_date,
+                source=args.data_source,
+                proxy_mode=args.proxy_mode,
+            )
+        except Exception as exc:
+            raise SystemExit(f"Failed to obtain race cards: {exc}") from exc
+        race_cards = outcome.race_cards
         try:
             race_cards = fetch_racecards(target_date, source=args.data_source)
         except Exception as exc:
@@ -323,6 +378,46 @@ def main(argv: Sequence[str] | None = None) -> int:
                 f"No race cards were found for {target_date.isoformat()}"
             )
 
+        if outcome.provider == DataSource.LOCAL and outcome.errors:
+            error_text = "; ".join(outcome.errors)
+            print(
+                "Live providers failed (%s); using bundled offline dataset for %s"
+                % (error_text, target_date.isoformat())
+            )
+        else:
+            provider_label = PROVIDER_LABELS.get(outcome.provider, outcome.provider)
+            print(
+                "Using %s for %s (proxy mode: %s)"
+                % (provider_label, target_date.isoformat(), outcome.proxy_mode)
+            )
+            if outcome.errors and outcome.provider != DataSource.LOCAL:
+                print("  Prior attempts: " + "; ".join(outcome.errors))
+
+        venue_cards: Dict[str, List[RaceCard]] = {}
+        for card in race_cards:
+            venue_cards.setdefault(card.venue_name, []).append(card)
+
+        predictor = KeirinPredictor()
+        for venue_name in sorted(venue_cards):
+            print(f"\n=== {venue_name} ===")
+            cards = sorted(venue_cards[venue_name], key=lambda c: (c.race_number, c.race_id))
+            first_in_venue = True
+            for card in cards:
+                if not first_in_venue:
+                    print()
+                first_in_venue = False
+                print(f"{card.race_number}R {card.race_title} (race ID: {card.race_id})")
+                predictions = predictor.predict_pairs(card.riders, top=args.top)
+                if not predictions:
+                    print("  No riders available")
+                    continue
+                for pair, probability in predictions:
+                    print("  - " + format_prediction(pair, probability))
+                line_predictions = predictor.predict_lines(card.riders, top=args.top_lines)
+                if line_predictions:
+                    print("  Line predictions:")
+                    for line_name, members, probability in line_predictions:
+                        print("    - " + format_line_prediction(line_name, members, probability))
         predictor = KeirinPredictor()
         for card in race_cards:
             print(
